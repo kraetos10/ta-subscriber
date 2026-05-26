@@ -1,0 +1,88 @@
+"""TubeArchivist API client."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import httpx
+
+log = logging.getLogger(__name__)
+
+
+class TAError(Exception):
+    pass
+
+
+class TAClient:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        verify: bool = True,
+        timeout: float = 30.0,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.verify = verify
+        self.client = httpx.Client(
+            timeout=timeout,
+            verify=verify,
+            headers={
+                "Authorization": f"Token {token}",
+                "Accept": "application/json",
+            },
+        )
+
+    def close(self) -> None:
+        self.client.close()
+
+    def ping(self) -> tuple[bool, str | None]:
+        try:
+            r = self.client.get(f"{self.base_url}/api/ping/")
+        except httpx.HTTPError as exc:
+            log.warning("ping failed: %s", exc)
+            return False, str(exc)
+        if r.status_code >= 400:
+            return False, f"HTTP {r.status_code}: {r.text[:200]}"
+        return True, None
+
+    def list_subscribed_channels(self) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            r = self.client.get(
+                f"{self.base_url}/api/channel/",
+                params={"filter": "subscribed", "page": page},
+            )
+            r.raise_for_status()
+            payload = r.json()
+            data = payload.get("data", [])
+            out.extend(data)
+            paginate = payload.get("paginate") or {}
+            last_page = paginate.get("last_page") or 1
+            if page >= last_page or not data:
+                break
+            page += 1
+        return out
+
+    def queue_videos(self, video_ids: list[str], autostart: bool) -> None:
+        if not video_ids:
+            return
+        body = {
+            "data": [{"youtube_id": vid, "status": "pending"} for vid in video_ids]
+        }
+        params = {"autostart": "true" if autostart else "false"}
+        r = self.client.post(
+            f"{self.base_url}/api/download/",
+            params=params,
+            json=body,
+        )
+        if r.status_code >= 400:
+            raise TAError(
+                f"queue_videos failed ({r.status_code}): {r.text[:300]}"
+            )
+        log.info(
+            "queued %d videos to TubeArchivist (autostart=%s)",
+            len(video_ids),
+            autostart,
+        )

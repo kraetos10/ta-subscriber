@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ta-subscriber</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>ta-subscriber</h1>
+    <div class="right">
+      <span id="status-pill" class="pill">…</span>
+      <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle theme">Theme</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="stats" class="grid">
+    <div class="card"><h3>Channels</h3><div class="big" id="stat-channels">–</div><div class="sub" id="stat-channels-sub"></div></div>
+    <div class="card"><h3>Videos queued</h3><div class="big" id="stat-queued">–</div><div class="sub">total since start</div></div>
+    <div class="card"><h3>Last scan</h3><div class="big" id="stat-last">–</div><div class="sub" id="stat-last-sub"></div></div>
+    <div class="card"><h3>Next scan</h3><div class="big" id="stat-next">–</div>
+      <button id="scan-now" class="btn primary small">Scan now</button>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <h2>TubeArchivist connection</h2>
+    <form id="settings-form" class="form">
+      <label>TA URL
+        <input name="ta_url" type="url" placeholder="http://tubearchivist:8000" required />
+      </label>
+      <label>API token
+        <input name="ta_token" type="password" placeholder="(unchanged)" autocomplete="off" />
+        <small id="token-status"></small>
+      </label>
+      <label class="checkbox">
+        <input name="verify_ssl" type="checkbox" />
+        <span>Verify TLS certificate (uncheck for self-signed)</span>
+      </label>
+      <div class="row">
+        <label>Scan interval (min)
+          <input name="scan_interval_minutes" type="number" min="5" max="10080" />
+        </label>
+        <label>Max age (days)
+          <input name="max_age_days" type="number" min="1" max="365" />
+        </label>
+        <label class="checkbox">
+          <input name="autostart" type="checkbox" />
+          <span>Autostart downloads</span>
+        </label>
+      </div>
+      <div class="row">
+        <label class="checkbox">
+          <input name="skip_shorts" type="checkbox" />
+          <span>Skip Shorts</span>
+        </label>
+        <label class="checkbox">
+          <input name="skip_streams" type="checkbox" />
+          <span>Skip live streams</span>
+        </label>
+      </div>
+      <label>Channel source
+        <select name="source">
+          <option value="db">Managed below (recommended)</option>
+          <option value="opml">OPML file at /data/subscriptions.opml</option>
+          <option value="file">/data/channels.txt</option>
+          <option value="env">CHANNEL_IDS env var</option>
+          <option value="ta">Sync from TubeArchivist subscriptions</option>
+        </select>
+      </label>
+      <div class="row gap">
+        <button type="submit" class="btn primary">Save</button>
+        <button type="button" id="test-conn" class="btn">Test connection</button>
+        <span id="dirty-pill" class="pill warn" hidden>Unsaved changes</span>
+        <span id="form-msg" class="msg"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card panel">
+    <h2>Channels <span id="ch-count" class="muted"></span></h2>
+
+    <form id="add-channel-form" class="row gap">
+      <input id="add-channel-input" type="text"
+             placeholder="Channel URL, @handle, or UC… ID"
+             required />
+      <button type="submit" class="btn primary">Add</button>
+      <span id="add-msg" class="msg"></span>
+    </form>
+
+    <div class="row gap secondary">
+      <label class="file-btn">
+        Import OPML
+        <input id="opml-file" type="file" accept=".opml,.xml,application/xml,text/xml" hidden />
+      </label>
+      <button id="sync-ta" class="btn">Sync from TA subscriptions</button>
+      <span id="import-msg" class="msg"></span>
+    </div>
+
+    <table id="channels-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Handle</th>
+          <th>Channel ID</th>
+          <th>Enabled</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="channels-empty" class="muted" hidden>No channels yet. Add one above or import an OPML.</p>
+  </section>
+
+  <section class="card panel">
+    <h2>Recent activity</h2>
+    <table id="activity-table">
+      <thead>
+        <tr><th>Queued at</th><th>Channel</th><th>Title</th><th>Video ID</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="activity-empty" class="muted" hidden>Nothing queued yet.</p>
+  </section>
+
+  <section class="card panel">
+    <h2>Scan log</h2>
+    <table id="scans-table">
+      <thead>
+        <tr><th>Started</th><th>Duration</th><th>Channels</th><th>Candidates</th><th>New</th><th>Queued</th><th>Skipped</th><th>Error</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>
