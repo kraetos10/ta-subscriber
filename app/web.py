@@ -64,6 +64,7 @@ def build_app(
     ta_provider,
     trigger_scan,
     reschedule,
+    next_scan_provider=None,
 ) -> FastAPI:
     app = FastAPI(title="ta-subscriber", docs_url=None, redoc_url=None)
 
@@ -71,6 +72,7 @@ def build_app(
     def status() -> dict[str, Any]:
         s = settings_provider()
         last = state.last_scan()
+        next_at = next_scan_provider() if next_scan_provider else None
         return {
             "ready": s.is_ready(),
             "settings": _scrub(s),
@@ -83,6 +85,7 @@ def build_app(
                 "queued": state.total_queued(),
             },
             "last_scan": last,
+            "next_scan_at": next_at,
         }
 
     @app.get("/api/settings")
@@ -202,8 +205,15 @@ def build_app(
         return {"deleted": state.clear_scans()}
 
     @app.get("/api/activity")
-    def recent_activity(limit: int = 50) -> list[dict[str, Any]]:
-        return state.recent_queued(limit=limit)
+    def recent_activity(limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        limit = max(1, min(limit, 200))
+        offset = max(0, offset)
+        return {
+            "items": state.recent_queued(limit=limit, offset=offset),
+            "total": state.total_queued(),
+            "limit": limit,
+            "offset": offset,
+        }
 
     @app.delete("/api/activity")
     def clear_activity() -> dict[str, Any]:

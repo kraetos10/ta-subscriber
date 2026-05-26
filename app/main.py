@@ -99,12 +99,19 @@ def main() -> int:
     def reschedule() -> None:
         ensure_job()
 
+    def next_scan_provider() -> int | None:
+        job = scheduler.get_job("scan")
+        if not job or not job.next_run_time:
+            return None
+        return int(job.next_run_time.timestamp())
+
     app = build_app(
         state=state,
         settings_provider=settings_provider,
         ta_provider=ta_provider,
         trigger_scan=trigger_scan,
         reschedule=reschedule,
+        next_scan_provider=next_scan_provider,
     )
 
     initial = settings_provider()

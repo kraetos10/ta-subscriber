@@ -225,15 +225,15 @@ class State:
                 rows,
             )
 
-    def recent_queued(self, limit: int = 50) -> list[dict[str, Any]]:
+    def recent_queued(self, limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
         with self._conn() as c:
             cur = c.execute(
                 "SELECT v.video_id, v.channel_id, v.title, v.queued_at, v.published_at, "
                 "c.name AS channel_name "
                 "FROM seen_videos v LEFT JOIN channels c ON c.channel_id = v.channel_id "
                 "WHERE v.queued_at IS NOT NULL "
-                "ORDER BY COALESCE(v.published_at, v.queued_at) DESC LIMIT ?",
-                (limit,),
+                "ORDER BY COALESCE(v.published_at, v.queued_at) DESC LIMIT ? OFFSET ?",
+                (limit, offset),
             )
             return [dict(row) for row in cur.fetchall()]
 

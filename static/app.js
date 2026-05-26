@@ -39,6 +39,32 @@ function flash(el, text, kind = "ok", ms = 4000) {
   if (ms) setTimeout(() => { if (el.textContent === text) { el.textContent = ""; el.className = "msg"; } }, ms);
 }
 
+let nextScanAt = null;
+let nextScanIntervalMinutes = null;
+let nextScanRefreshTriggered = false;
+
+function renderNextScan() {
+  const el = $("#stat-next");
+  if (!el) return;
+  if (nextScanAt == null) {
+    el.textContent = nextScanIntervalMinutes != null ? `${nextScanIntervalMinutes}m` : "–";
+    return;
+  }
+  const diff = nextScanAt - Math.floor(Date.now() / 1000);
+  if (diff <= 0) {
+    el.textContent = "due";
+    if (!nextScanRefreshTriggered) {
+      nextScanRefreshTriggered = true;
+      setTimeout(() => { loadStatus().finally(() => { nextScanRefreshTriggered = false; }); }, 1500);
+    }
+  } else if (diff < 60) {
+    el.textContent = `${diff}s`;
+  } else {
+    const m = Math.floor(diff / 60);
+    el.textContent = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+  }
+}
+
 async function loadStatus() {
   const s = await api("/api/status");
   const pill = $("#status-pill");
@@ -72,18 +98,15 @@ async function loadStatus() {
   }
 
   const interval = s.settings.scan_interval_minutes;
-  if (s.last_scan && s.last_scan.started_at) {
-    const next = s.last_scan.started_at + interval * 60;
-    const diff = next - Math.floor(Date.now() / 1000);
-    if (diff > 0) {
-      const m = Math.floor(diff / 60);
-      $("#stat-next").textContent = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
-    } else {
-      $("#stat-next").textContent = "due";
-    }
+  if (s.next_scan_at) {
+    nextScanAt = s.next_scan_at;
+  } else if (s.last_scan && s.last_scan.started_at) {
+    nextScanAt = s.last_scan.started_at + interval * 60;
   } else {
-    $("#stat-next").textContent = `${interval}m`;
+    nextScanAt = null;
   }
+  nextScanIntervalMinutes = interval;
+  renderNextScan();
 
   fillSettingsForm(s.settings);
 }
@@ -293,11 +316,20 @@ async function scanNow() {
   }
 }
 
+const ACTIVITY_PAGE_SIZE = 50;
+let activityOffset = 0;
+
 async function loadActivity() {
-  const items = await api("/api/activity?limit=50");
+  const r = await api(`/api/activity?limit=${ACTIVITY_PAGE_SIZE}&offset=${activityOffset}`);
+  const items = r.items || [];
+  const total = r.total || 0;
+  if (activityOffset > 0 && items.length === 0 && total > 0) {
+    activityOffset = Math.max(0, Math.floor((total - 1) / ACTIVITY_PAGE_SIZE) * ACTIVITY_PAGE_SIZE);
+    return loadActivity();
+  }
   const tbody = $("#activity-table tbody");
   tbody.innerHTML = "";
-  $("#activity-empty").hidden = items.length > 0;
+  $("#activity-empty").hidden = total > 0;
   for (const it of items) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -309,6 +341,29 @@ async function loadActivity() {
     `;
     tbody.appendChild(tr);
   }
+  renderActivityPager(total, items.length);
+}
+
+function renderActivityPager(total, count) {
+  const pager = $("#activity-pager");
+  pager.hidden = total <= ACTIVITY_PAGE_SIZE;
+  if (pager.hidden) return;
+  const start = total === 0 ? 0 : activityOffset + 1;
+  const end = activityOffset + count;
+  $("#activity-range").textContent = `${start}–${end} of ${total}`;
+  $("#activity-prev").disabled = activityOffset === 0;
+  $("#activity-next").disabled = end >= total;
+}
+
+function activityPrev() {
+  if (activityOffset === 0) return;
+  activityOffset = Math.max(0, activityOffset - ACTIVITY_PAGE_SIZE);
+  loadActivity();
+}
+
+function activityNext() {
+  activityOffset += ACTIVITY_PAGE_SIZE;
+  loadActivity();
 }
 
 async function loadScans() {
@@ -378,6 +433,7 @@ async function clearActivity() {
   try {
     const r = await api("/api/activity", { method: "DELETE" });
     flash($("#form-msg"), `Cleared ${r.deleted} seen videos.`, "ok");
+    activityOffset = 0;
     loadAll();
   } catch (e) {
     flash($("#form-msg"), e.message, "err", 8000);
@@ -407,7 +463,10 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#sync-ta").addEventListener("click", syncFromTa);
   $("#scan-now").addEventListener("click", scanNow);
   $("#clear-activity").addEventListener("click", clearActivity);
+  $("#activity-prev").addEventListener("click", activityPrev);
+  $("#activity-next").addEventListener("click", activityNext);
   $("#clear-scans").addEventListener("click", clearScans);
   loadAll();
   setInterval(() => { loadStatus(); }, 15000);
+  setInterval(renderNextScan, 1000);
 });
