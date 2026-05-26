@@ -197,9 +197,17 @@ def build_app(
     def recent_scans(limit: int = 20) -> list[dict[str, Any]]:
         return state.recent_scans(limit=limit)
 
+    @app.delete("/api/scans")
+    def clear_scans() -> dict[str, Any]:
+        return {"deleted": state.clear_scans()}
+
     @app.get("/api/activity")
     def recent_activity(limit: int = 50) -> list[dict[str, Any]]:
         return state.recent_queued(limit=limit)
+
+    @app.delete("/api/activity")
+    def clear_activity() -> dict[str, Any]:
+        return {"deleted": state.clear_seen()}
 
     @app.post("/api/channels/sync-from-ta")
     def sync_from_ta() -> dict[str, Any]:

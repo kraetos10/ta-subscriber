@@ -249,6 +249,16 @@ class State:
             )
             return int(cur.fetchone()[0])
 
+    def clear_seen(self) -> int:
+        with self._conn() as c:
+            cur = c.execute("DELETE FROM seen_videos")
+            return cur.rowcount
+
+    def clear_scans(self) -> int:
+        with self._conn() as c:
+            cur = c.execute("DELETE FROM scan_log")
+            return cur.rowcount
+
     # ---- scan log -------------------------------------------------------
 
     def start_scan(self) -> int:

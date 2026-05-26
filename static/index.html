@@ -118,7 +118,11 @@
   </section>
 
   <section class="card panel">
-    <h2>Recent activity</h2>
+    <div class="row gap" style="justify-content: space-between; margin-top: 0;">
+      <h2 style="margin: 0;">Recent activity</h2>
+      <button id="clear-activity" class="btn small" type="button">Clear seen videos</button>
+    </div>
+    <p class="muted">Clearing makes the next scan re-evaluate every RSS entry — useful after a classifier change.</p>
     <table id="activity-table">
       <thead>
         <tr><th>Published</th><th>Queued</th><th>Channel</th><th>Title</th><th>Video ID</th></tr>
@@ -129,7 +133,10 @@
   </section>
 
   <section class="card panel">
-    <h2>Scan log</h2>
+    <div class="row gap" style="justify-content: space-between; margin-top: 0;">
+      <h2 style="margin: 0;">Scan log</h2>
+      <button id="clear-scans" class="btn small" type="button">Clear log</button>
+    </div>
     <table id="scans-table">
       <thead>
         <tr><th>Started</th><th>Duration</th><th>Channels</th><th>Candidates</th><th>New</th><th>Queued</th><th>Skipped</th><th>Error</th></tr>

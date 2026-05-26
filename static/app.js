@@ -373,6 +373,29 @@ function initTheme() {
   });
 }
 
+async function clearActivity() {
+  if (!confirm("Wipe the seen-videos table? Next scan will re-evaluate every RSS entry; TA dedupes by video ID so already-archived videos are safe.")) return;
+  try {
+    const r = await api("/api/activity", { method: "DELETE" });
+    flash($("#form-msg"), `Cleared ${r.deleted} seen videos.`, "ok");
+    loadAll();
+  } catch (e) {
+    flash($("#form-msg"), e.message, "err", 8000);
+  }
+}
+
+async function clearScans() {
+  if (!confirm("Wipe the scan log?")) return;
+  try {
+    const r = await api("/api/scans", { method: "DELETE" });
+    flash($("#form-msg"), `Cleared ${r.deleted} scan log entries.`, "ok");
+    loadScans();
+    loadStatus();
+  } catch (e) {
+    flash($("#form-msg"), e.message, "err", 8000);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   $("#settings-form").addEventListener("submit", saveSettings);
@@ -383,6 +406,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#opml-file").addEventListener("change", importOpml);
   $("#sync-ta").addEventListener("click", syncFromTa);
   $("#scan-now").addEventListener("click", scanNow);
+  $("#clear-activity").addEventListener("click", clearActivity);
+  $("#clear-scans").addEventListener("click", clearScans);
   loadAll();
   setInterval(() => { loadStatus(); }, 15000);
 });
