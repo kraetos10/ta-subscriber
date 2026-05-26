@@ -20,7 +20,12 @@ def classify_video(
     video_id: str,
     detect_streams: bool = False,
 ) -> str:
-    """Return 'shorts', 'stream', or 'video'. One GET to /shorts/<id>; optional /watch hit for streams."""
+    """Return 'shorts', 'stream', or 'video'.
+
+    YouTube redirects /shorts/<id> -> /watch?v=<id> for non-shorts (303),
+    and serves 200 for actual shorts. We use status alone — body sniffing
+    is unreliable across YouTube's region/consent variants.
+    """
     try:
         r = client.get(
             f"https://www.youtube.com/shorts/{video_id}",
@@ -31,14 +36,15 @@ def classify_video(
         log.debug("classify failed for %s: %s", video_id, exc)
         return "video"
 
+    if r.status_code == 200:
+        return "shorts"
     if r.status_code in (301, 302, 303, 307, 308):
         target = r.headers.get("location", "")
-        if "/watch" in target and detect_streams:
-            return _check_stream(client, video_id)
-        return "video"
-    if r.status_code == 200:
-        if b"shorts" in r.content[:8000].lower():
+        if "/shorts/" in target:
+            # consent / locale redirect that still lands on shorts
             return "shorts"
+        if detect_streams and "/watch" in target:
+            return _check_stream(client, video_id)
         return "video"
     return "video"
 
