@@ -131,16 +131,21 @@ class Scanner:
         if queued_ids:
             queued_set = set(queued_ids)
             queued_pairs = [
-                (c.video_id, c.channel_id, c.title)
+                (c.video_id, c.channel_id, c.title, int(c.published.timestamp()))
                 for c in to_queue
                 if c.video_id in queued_set
             ]
             self.state.mark_seen(queued_pairs, queued=True, now_ts=now_ts)
         if skipped:
-            by_reason: dict[str, list[tuple[str, str, str]]] = {}
+            by_reason: dict[str, list[tuple[str, str, str, int]]] = {}
             for entry, reason in skipped:
                 by_reason.setdefault(reason, []).append(
-                    (entry.video_id, entry.channel_id, entry.title)
+                    (
+                        entry.video_id,
+                        entry.channel_id,
+                        entry.title,
+                        int(entry.published.timestamp()),
+                    )
                 )
             for reason, items in by_reason.items():
                 self.state.mark_seen(

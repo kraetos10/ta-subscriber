@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS seen_videos (
     title TEXT,
     first_seen INTEGER NOT NULL,
     queued_at INTEGER,
-    skipped_reason TEXT
+    skipped_reason TEXT,
+    published_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_seen_channel ON seen_videos(channel_id);
 CREATE INDEX IF NOT EXISTS idx_seen_queued ON seen_videos(queued_at DESC);
@@ -56,6 +57,8 @@ def _migrate(conn) -> None:
     cols = {row[1] for row in cur.fetchall()}
     if "skipped_reason" not in cols:
         conn.execute("ALTER TABLE seen_videos ADD COLUMN skipped_reason TEXT")
+    if "published_at" not in cols:
+        conn.execute("ALTER TABLE seen_videos ADD COLUMN published_at INTEGER")
     cur = conn.execute("PRAGMA table_info(scan_log)")
     cols = {row[1] for row in cur.fetchall()}
     if "skipped" not in cols:
@@ -194,32 +197,42 @@ class State:
 
     def mark_seen(
         self,
-        items: list[tuple[str, str, str]],
+        items: list[tuple[str, str, str, int | None]],
         queued: bool,
         now_ts: int,
         skipped_reason: str | None = None,
     ) -> None:
+        """items: (video_id, channel_id, title, published_at_unix)."""
         if not items:
             return
         rows = [
-            (vid, cid, title, now_ts, now_ts if queued else None, skipped_reason)
-            for vid, cid, title in items
+            (
+                vid,
+                cid,
+                title,
+                now_ts,
+                now_ts if queued else None,
+                skipped_reason,
+                published,
+            )
+            for vid, cid, title, published in items
         ]
         with self._conn() as c:
             c.executemany(
                 "INSERT OR IGNORE INTO seen_videos"
-                "(video_id, channel_id, title, first_seen, queued_at, skipped_reason) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "(video_id, channel_id, title, first_seen, queued_at, skipped_reason, published_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 rows,
             )
 
     def recent_queued(self, limit: int = 50) -> list[dict[str, Any]]:
         with self._conn() as c:
             cur = c.execute(
-                "SELECT v.video_id, v.channel_id, v.title, v.queued_at, c.name AS channel_name "
+                "SELECT v.video_id, v.channel_id, v.title, v.queued_at, v.published_at, "
+                "c.name AS channel_name "
                 "FROM seen_videos v LEFT JOIN channels c ON c.channel_id = v.channel_id "
                 "WHERE v.queued_at IS NOT NULL "
-                "ORDER BY v.queued_at DESC LIMIT ?",
+                "ORDER BY COALESCE(v.published_at, v.queued_at) DESC LIMIT ?",
                 (limit,),
             )
             return [dict(row) for row in cur.fetchall()]

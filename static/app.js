@@ -301,7 +301,8 @@ async function loadActivity() {
   for (const it of items) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${fmtTs(it.queued_at)}</td>
+      <td>${it.published_at ? fmtTs(it.published_at) : '<span class="muted">–</span>'}</td>
+      <td class="muted">${relTs(it.queued_at)}</td>
       <td>${escapeHtml(it.channel_name || it.channel_id)}</td>
       <td>${escapeHtml(it.title || "")}</td>
       <td class="id"><a href="https://youtu.be/${it.video_id}" target="_blank" rel="noopener">${it.video_id}</a></td>
