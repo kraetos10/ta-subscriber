@@ -15,8 +15,12 @@ log = logging.getLogger(__name__)
 RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id={cid}"
 
 
-def classify_video(client: httpx.Client, video_id: str) -> str:
-    """Return 'shorts', 'stream', or 'video'. Uses one HEAD-style GET to /shorts/<id>."""
+def classify_video(
+    client: httpx.Client,
+    video_id: str,
+    detect_streams: bool = False,
+) -> str:
+    """Return 'shorts', 'stream', or 'video'. One GET to /shorts/<id>; optional /watch hit for streams."""
     try:
         r = client.get(
             f"https://www.youtube.com/shorts/{video_id}",
@@ -29,7 +33,7 @@ def classify_video(client: httpx.Client, video_id: str) -> str:
 
     if r.status_code in (301, 302, 303, 307, 308):
         target = r.headers.get("location", "")
-        if "/watch" in target:
+        if "/watch" in target and detect_streams:
             return _check_stream(client, video_id)
         return "video"
     if r.status_code == 200:

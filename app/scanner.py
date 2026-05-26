@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Lock
 
@@ -65,19 +66,19 @@ class Scanner:
         cutoff = datetime.now(timezone.utc) - timedelta(days=settings.max_age_days)
 
         candidates: list[VideoEntry] = []
-        with httpx.Client(headers={"User-Agent": "ta-subscriber/1.0"}) as http:
+        with httpx.Client(
+            headers={"User-Agent": "ta-subscriber/1.0"},
+            timeout=20.0,
+        ) as http:
             fetcher = RSSFetcher(http)
-            for ch in channels:
+
+            def fetch_channel(ch):
                 entries = fetcher.fetch(ch.channel_id)
-                fresh = [e for e in entries if e.published >= cutoff]
-                if fresh:
-                    log.debug(
-                        "channel %s (%s): %d fresh entries",
-                        ch.channel_id,
-                        ch.name or "?",
-                        len(fresh),
-                    )
-                candidates.extend(fresh)
+                return [e for e in entries if e.published >= cutoff]
+
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                for fresh in pool.map(fetch_channel, channels):
+                    candidates.extend(fresh)
 
         unseen_ids = self.state.filter_unseen([c.video_id for c in candidates])
         unseen_set = set(unseen_ids)
@@ -93,15 +94,23 @@ class Scanner:
                     "Accept-Language": "en-US,en;q=0.9",
                 },
                 cookies={"CONSENT": "YES+1", "SOCS": "CAI"},
+                timeout=15.0,
             ) as classify_http:
-                for entry in unseen:
-                    kind = classify_video(classify_http, entry.video_id)
-                    if kind == "shorts" and settings.skip_shorts:
-                        skipped.append((entry, "shorts"))
-                    elif kind == "stream" and settings.skip_streams:
-                        skipped.append((entry, "stream"))
-                    else:
-                        to_queue.append(entry)
+                def classify(entry):
+                    return entry, classify_video(
+                        classify_http,
+                        entry.video_id,
+                        detect_streams=settings.skip_streams,
+                    )
+
+                with ThreadPoolExecutor(max_workers=10) as pool:
+                    for entry, kind in pool.map(classify, unseen):
+                        if kind == "shorts" and settings.skip_shorts:
+                            skipped.append((entry, "shorts"))
+                        elif kind == "stream" and settings.skip_streams:
+                            skipped.append((entry, "stream"))
+                        else:
+                            to_queue.append(entry)
         else:
             to_queue = list(unseen)
 
