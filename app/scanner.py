@@ -115,6 +115,7 @@ class Scanner:
             to_queue = list(unseen)
 
         queued_ids: list[str] = []
+        unconfirmed = 0
         error: str | None = None
         if to_queue:
             try:
@@ -122,10 +123,25 @@ class Scanner:
                     video_ids=[c.video_id for c in to_queue],
                     autostart=settings.autostart,
                 )
-                queued_ids = [c.video_id for c in to_queue]
             except Exception as exc:  # noqa: BLE001
                 error = str(exc)
                 log.error("failed to queue videos: %s", exc)
+            else:
+                # TA extracts asynchronously and silently drops videos it can't
+                # ingest yet (e.g. freshly-ended live streams still processing).
+                # Only mark videos seen once TA confirms it took them; leave the
+                # rest unseen so the next scan retries them (bounded by max_age).
+                confirmed = self._confirm_ingested(
+                    ta, [c.video_id for c in to_queue]
+                )
+                queued_ids = [c.video_id for c in to_queue if c.video_id in confirmed]
+                unconfirmed = len(to_queue) - len(queued_ids)
+                if unconfirmed:
+                    log.info(
+                        "%d/%d videos not yet ingested by TA; will retry next scan",
+                        unconfirmed,
+                        len(to_queue),
+                    )
 
         now_ts = int(time.time())
         if queued_ids:
@@ -178,3 +194,30 @@ class Scanner:
             "skipped": len(skipped),
             **({"error": error} if error else {}),
         }
+
+    def _confirm_ingested(
+        self,
+        ta: TAClient,
+        video_ids: list[str],
+        attempts: int = 3,
+        delay: float = 8.0,
+    ) -> set[str]:
+        """Return the subset of video_ids TA has actually ingested.
+
+        Polls briefly because TA extracts asynchronously: already-available
+        videos (normal uploads) confirm on the first round, while videos still
+        processing on YouTube's side stay unconfirmed and are retried on the
+        next scan cycle rather than being marked seen prematurely.
+        """
+        remaining = list(video_ids)
+        confirmed: set[str] = set()
+        for attempt in range(attempts):
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                results = list(pool.map(ta.is_ingested, remaining))
+            newly = {vid for vid, ok in zip(remaining, results) if ok}
+            confirmed |= newly
+            remaining = [vid for vid in remaining if vid not in newly]
+            if not remaining or attempt == attempts - 1:
+                break
+            time.sleep(delay)
+        return confirmed

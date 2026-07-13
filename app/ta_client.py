@@ -65,6 +65,25 @@ class TAClient:
             page += 1
         return out
 
+    def is_ingested(self, video_id: str) -> bool:
+        """True once TA has actually taken the video into its DB.
+
+        TA's POST /api/download/ returns 200 immediately but extracts metadata
+        in a background task; if extraction fails (e.g. a freshly-ended live
+        stream whose VOD is still processing) the video is silently dropped and
+        appears in no TA state. We treat presence in the video table OR the
+        download queue as proof of ingestion.
+        """
+        for path in (f"/api/video/{video_id}/", f"/api/download/{video_id}/"):
+            try:
+                r = self.client.get(f"{self.base_url}{path}")
+            except httpx.HTTPError as exc:
+                log.debug("ingest check failed for %s (%s): %s", video_id, path, exc)
+                continue
+            if r.status_code == 200:
+                return True
+        return False
+
     def queue_videos(self, video_ids: list[str], autostart: bool) -> None:
         if not video_ids:
             return
