@@ -24,6 +24,7 @@ SETTING_KEYS: dict[str, Any] = {
     "opml_path": "/data/subscriptions.opml",
     "channels_path": "/data/channels.txt",
     "channel_ids_env": "",
+    "slack_webhook_url": "",
 }
 
 
@@ -58,6 +59,7 @@ class Settings:
     opml_path: str
     channels_path: str
     channel_ids_env: str
+    slack_webhook_url: str
 
     def is_ready(self) -> bool:
         return bool(self.ta_url and self.ta_token)
@@ -79,6 +81,7 @@ def bootstrap_settings(state: State) -> None:
         "opml_path": os.environ.get("OPML_PATH", "/data/subscriptions.opml"),
         "channels_path": os.environ.get("CHANNELS_PATH", "/data/channels.txt"),
         "channel_ids_env": os.environ.get("CHANNEL_IDS", ""),
+        "slack_webhook_url": os.environ.get("SLACK_WEBHOOK_URL", ""),
     }
     for key, default in SETTING_KEYS.items():
         if key in existing:
@@ -102,6 +105,7 @@ def load_settings(state: State) -> Settings:
         opml_path=str(raw.get("opml_path") or "/data/subscriptions.opml"),
         channels_path=str(raw.get("channels_path") or "/data/channels.txt"),
         channel_ids_env=str(raw.get("channel_ids_env") or ""),
+        slack_webhook_url=str(raw.get("slack_webhook_url") or ""),
     )
 
 

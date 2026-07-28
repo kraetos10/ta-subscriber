@@ -15,6 +15,7 @@ services:
       AUTOSTART: ${AUTOSTART:-false}
       MAX_AGE_DAYS: ${MAX_AGE_DAYS:-7}
       SOURCE: ${SOURCE:-db}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       TZ: ${TZ:-UTC}
     volumes:

@@ -11,6 +11,7 @@ from threading import Lock
 import httpx
 
 from .config import Settings
+from .slack import post_new_video
 from .state import State
 from .subscriptions import load as load_subscriptions
 from .ta_client import TAClient
@@ -152,6 +153,25 @@ class Scanner:
                 if c.video_id in queued_set
             ]
             self.state.mark_seen(queued_pairs, queued=True, now_ts=now_ts)
+
+            if settings.slack_webhook_url:
+                # Notify once per newly-ingested video. post_new_video never
+                # raises, but guard anyway so a Slack hiccup can't abort a scan.
+                channel_names = {c.channel_id: c.name for c in channels}
+                for c in to_queue:
+                    if c.video_id not in queued_set:
+                        continue
+                    try:
+                        post_new_video(
+                            settings.slack_webhook_url,
+                            title=c.title,
+                            channel_name=channel_names.get(c.channel_id),
+                            video_id=c.video_id,
+                            ta_url=settings.ta_url,
+                            published=c.published,
+                        )
+                    except Exception:  # noqa: BLE001
+                        log.exception("slack notify raised for %s", c.video_id)
         if skipped:
             by_reason: dict[str, list[tuple[str, str, str, int]]] = {}
             for entry, reason in skipped:
