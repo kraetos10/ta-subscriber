@@ -126,9 +126,7 @@ function fillSettingsForm(settings) {
   $("#token-status").textContent = settings.ta_token_set
     ? "Token is set. Enter a new value to replace it; leave blank to keep."
     : "No token saved yet.";
-  $("#slack-status").textContent = settings.slack_webhook_url_set
-    ? "Webhook is set. Enter a new value to replace it; leave blank to keep."
-    : "No Slack webhook saved. New videos won't be posted to Slack.";
+  f.elements.slack_webhook_url.value = settings.slack_webhook_url || "";
   markFormClean();
 }
 
@@ -144,7 +142,7 @@ function snapshotForm() {
     verify: f.elements.verify_ssl.checked,
     skip_shorts: f.elements.skip_shorts.checked,
     skip_streams: f.elements.skip_streams.checked,
-    slack_set: !!f.elements.slack_webhook_url.value,
+    slack_webhook_url: f.elements.slack_webhook_url.value,
   });
 }
 let cleanSnapshot = "";
@@ -169,15 +167,13 @@ async function saveSettings(ev) {
     skip_shorts: f.elements.skip_shorts.checked,
     skip_streams: f.elements.skip_streams.checked,
   };
+  payload.slack_webhook_url = f.elements.slack_webhook_url.value.trim();
   const tokenInput = f.elements.ta_token.value;
   if (tokenInput) payload.ta_token = tokenInput;
-  const slackInput = f.elements.slack_webhook_url.value;
-  if (slackInput) payload.slack_webhook_url = slackInput;
 
   try {
     await api("/api/settings", { method: "POST", body: JSON.stringify(payload) });
     f.elements.ta_token.value = "";
-    f.elements.slack_webhook_url.value = "";
     flash($("#form-msg"), "Saved.", "ok");
     markFormClean();
     loadStatus();

@@ -65,8 +65,8 @@
         </label>
       </div>
       <label>Slack webhook URL
-        <input name="slack_webhook_url" type="password" placeholder="(unchanged)" autocomplete="off" />
-        <small id="slack-status"></small>
+        <input name="slack_webhook_url" type="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off" />
+        <small id="slack-status">Posts new-video notifications to Slack. Leave blank to disable.</small>
       </label>
       <label>Channel source
         <select name="source">

@@ -32,7 +32,7 @@ class SettingsPayload(BaseModel):
     verify_ssl: bool = True
     skip_shorts: bool = True
     skip_streams: bool = False
-    slack_webhook_url: Optional[str] = None
+    slack_webhook_url: str = ""
 
 
 class AddChannelPayload(BaseModel):
@@ -56,7 +56,7 @@ def _scrub(settings: Settings) -> dict[str, Any]:
         "skip_streams": settings.skip_streams,
         "opml_path": settings.opml_path,
         "channels_path": settings.channels_path,
-        "slack_webhook_url_set": bool(settings.slack_webhook_url),
+        "slack_webhook_url": settings.slack_webhook_url,
     }
 
 
@@ -108,10 +108,7 @@ def build_app(
         state.set_setting("verify_ssl", payload.verify_ssl)
         state.set_setting("skip_shorts", payload.skip_shorts)
         state.set_setting("skip_streams", payload.skip_streams)
-        # Secret: only overwrite when a non-empty value is supplied, so the
-        # masked UI round-trip (which never receives it back) can't wipe it.
-        if payload.slack_webhook_url is not None and payload.slack_webhook_url != "":
-            state.set_setting("slack_webhook_url", payload.slack_webhook_url)
+        state.set_setting("slack_webhook_url", payload.slack_webhook_url.strip())
         reschedule()
         return _scrub(settings_provider())
 
