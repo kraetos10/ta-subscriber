@@ -33,7 +33,7 @@ def build_message(
     bare URL (not a labelled `<url|text>` link) into its native rich video
     preview — thumbnail, title and channel — which is the whole point.
     """
-    lines = [":tv: *New video downloaded*", f"*{_escape(title)}*"]
+    lines = [":tv: *New video added to queue*", f"*{_escape(title)}*"]
     meta: list[str] = []
     if channel_name:
         meta.append(_escape(channel_name))
