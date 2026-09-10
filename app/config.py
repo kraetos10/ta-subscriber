@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -25,6 +26,11 @@ SETTING_KEYS: dict[str, Any] = {
     "channels_path": "/data/channels.txt",
     "channel_ids_env": "",
     "slack_webhook_url": "",
+    "ntfy_url": "https://ntfy.sh",
+    "ntfy_topic": "",
+    "ntfy_token": "",
+    "public_url": "",
+    "notify_secret": "",
 }
 
 
@@ -60,6 +66,11 @@ class Settings:
     channels_path: str
     channel_ids_env: str
     slack_webhook_url: str
+    ntfy_url: str
+    ntfy_topic: str
+    ntfy_token: str
+    public_url: str
+    notify_secret: str
 
     def is_ready(self) -> bool:
         return bool(self.ta_url and self.ta_token)
@@ -82,12 +93,20 @@ def bootstrap_settings(state: State) -> None:
         "channels_path": os.environ.get("CHANNELS_PATH", "/data/channels.txt"),
         "channel_ids_env": os.environ.get("CHANNEL_IDS", ""),
         "slack_webhook_url": os.environ.get("SLACK_WEBHOOK_URL", ""),
+        "ntfy_url": os.environ.get("NTFY_URL", "https://ntfy.sh"),
+        "ntfy_topic": os.environ.get("NTFY_TOPIC", ""),
+        "ntfy_token": os.environ.get("NTFY_TOKEN", ""),
+        "public_url": os.environ.get("PUBLIC_URL", ""),
     }
     for key, default in SETTING_KEYS.items():
         if key in existing:
             continue
         value = defaults_from_env.get(key, default)
         state.set_setting(key, value)
+    # Signs notification action links. Generated once and never shown in the
+    # UI or the API: anyone holding it can trigger downloads.
+    if not existing.get("notify_secret"):
+        state.set_setting("notify_secret", secrets.token_urlsafe(32))
 
 
 def load_settings(state: State) -> Settings:
@@ -106,6 +125,11 @@ def load_settings(state: State) -> Settings:
         channels_path=str(raw.get("channels_path") or "/data/channels.txt"),
         channel_ids_env=str(raw.get("channel_ids_env") or ""),
         slack_webhook_url=str(raw.get("slack_webhook_url") or ""),
+        ntfy_url=str(raw.get("ntfy_url") or "https://ntfy.sh"),
+        ntfy_topic=str(raw.get("ntfy_topic") or ""),
+        ntfy_token=str(raw.get("ntfy_token") or ""),
+        public_url=str(raw.get("public_url") or ""),
+        notify_secret=str(raw.get("notify_secret") or ""),
     )
 
 

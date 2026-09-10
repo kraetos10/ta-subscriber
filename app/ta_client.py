@@ -84,6 +84,27 @@ class TAClient:
                 return True
         return False
 
+    def download_now(self, video_id: str) -> bool:
+        """Make TA download one already-queued video now.
+
+        POSTing status "priority" flips the queue item to auto_start and TA
+        itself kicks off a download run for auto-start items, so this single
+        call is enough to pull the video. Returns False if TA no longer has
+        the video in its download queue (already downloaded, or forgotten).
+        """
+        r = self.client.post(
+            f"{self.base_url}/api/download/{video_id}/",
+            json={"status": "priority"},
+        )
+        if r.status_code == 404:
+            return False
+        if r.status_code >= 400:
+            raise TAError(
+                f"download_now failed ({r.status_code}): {r.text[:300]}"
+            )
+        log.info("triggered download of %s", video_id)
+        return True
+
     def queue_videos(self, video_ids: list[str], autostart: bool) -> None:
         if not video_ids:
             return

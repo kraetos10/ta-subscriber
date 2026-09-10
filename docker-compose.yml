@@ -16,6 +16,10 @@ services:
       MAX_AGE_DAYS: ${MAX_AGE_DAYS:-7}
       SOURCE: ${SOURCE:-db}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      NTFY_URL: ${NTFY_URL:-https://ntfy.sh}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       TZ: ${TZ:-UTC}
     volumes:

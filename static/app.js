@@ -127,6 +127,10 @@ function fillSettingsForm(settings) {
     ? "Token is set. Enter a new value to replace it; leave blank to keep."
     : "No token saved yet.";
   f.elements.slack_webhook_url.value = settings.slack_webhook_url || "";
+  f.elements.ntfy_url.value = settings.ntfy_url || "";
+  f.elements.ntfy_topic.value = settings.ntfy_topic || "";
+  f.elements.ntfy_token.value = settings.ntfy_token || "";
+  f.elements.public_url.value = settings.public_url || "";
   markFormClean();
 }
 
@@ -143,6 +147,10 @@ function snapshotForm() {
     skip_shorts: f.elements.skip_shorts.checked,
     skip_streams: f.elements.skip_streams.checked,
     slack_webhook_url: f.elements.slack_webhook_url.value,
+    ntfy_url: f.elements.ntfy_url.value,
+    ntfy_topic: f.elements.ntfy_topic.value,
+    ntfy_token: f.elements.ntfy_token.value,
+    public_url: f.elements.public_url.value,
   });
 }
 let cleanSnapshot = "";
@@ -168,6 +176,10 @@ async function saveSettings(ev) {
     skip_streams: f.elements.skip_streams.checked,
   };
   payload.slack_webhook_url = f.elements.slack_webhook_url.value.trim();
+  payload.ntfy_url = f.elements.ntfy_url.value.trim();
+  payload.ntfy_topic = f.elements.ntfy_topic.value.trim();
+  payload.ntfy_token = f.elements.ntfy_token.value.trim();
+  payload.public_url = f.elements.public_url.value.trim();
   const tokenInput = f.elements.ta_token.value;
   if (tokenInput) payload.ta_token = tokenInput;
 

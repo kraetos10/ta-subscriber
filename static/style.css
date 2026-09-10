@@ -120,6 +120,7 @@ main.wrap { padding-top: 20px; padding-bottom: 60px; }
 }
 .form input:focus, .form select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 .form .row { display: flex; gap: 14px; flex-wrap: wrap; }
+.form .field { display: flex; flex-direction: column; gap: 4px; }
 .form .row > label { flex: 1 1 160px; }
 .form .checkbox { flex-direction: row; align-items: center; gap: 8px; }
 .form .checkbox input { width: auto; }

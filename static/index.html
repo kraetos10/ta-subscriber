@@ -68,6 +68,24 @@
         <input name="slack_webhook_url" type="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off" />
         <small id="slack-status">Posts new-video notifications to Slack. Leave blank to disable.</small>
       </label>
+      <div class="field">
+        <div class="row">
+          <label>ntfy server
+            <input name="ntfy_url" type="url" placeholder="https://ntfy.sh" autocomplete="off" />
+          </label>
+          <label>ntfy topic
+            <input name="ntfy_topic" type="text" placeholder="my-topic" autocomplete="off" />
+          </label>
+          <label>ntfy token (optional)
+            <input name="ntfy_token" type="text" placeholder="tk_…" autocomplete="off" />
+          </label>
+        </div>
+        <small id="ntfy-status">Pushes new-video notifications to ntfy. Leave the topic blank to disable; the token is only needed for protected topics.</small>
+      </div>
+      <label>Public URL of this app
+        <input name="public_url" type="url" placeholder="https://ta-subscriber.example.com" autocomplete="off" />
+        <small id="public-url-status">Where your phone can reach this app. Set it to add a <strong>Download</strong> button to ntfy notifications that pulls that one video into TubeArchivist. Leave blank to omit the button.</small>
+      </label>
       <label>Channel source
         <select name="source">
           <option value="db">Managed below (recommended)</option>
