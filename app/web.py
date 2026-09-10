@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from . import signing
 from .config import Settings, load_settings
 from .state import State
 from .subscriptions import parse_opml
@@ -33,6 +34,10 @@ class SettingsPayload(BaseModel):
     skip_shorts: bool = True
     skip_streams: bool = False
     slack_webhook_url: str = ""
+    ntfy_url: str = "https://ntfy.sh"
+    ntfy_topic: str = ""
+    ntfy_token: str = ""
+    public_url: str = ""
 
 
 class AddChannelPayload(BaseModel):
@@ -57,6 +62,10 @@ def _scrub(settings: Settings) -> dict[str, Any]:
         "opml_path": settings.opml_path,
         "channels_path": settings.channels_path,
         "slack_webhook_url": settings.slack_webhook_url,
+        "ntfy_url": settings.ntfy_url,
+        "ntfy_topic": settings.ntfy_topic,
+        "ntfy_token": settings.ntfy_token,
+        "public_url": settings.public_url,
     }
 
 
@@ -109,6 +118,10 @@ def build_app(
         state.set_setting("skip_shorts", payload.skip_shorts)
         state.set_setting("skip_streams", payload.skip_streams)
         state.set_setting("slack_webhook_url", payload.slack_webhook_url.strip())
+        state.set_setting("ntfy_url", payload.ntfy_url.strip() or "https://ntfy.sh")
+        state.set_setting("ntfy_topic", payload.ntfy_topic.strip())
+        state.set_setting("ntfy_token", payload.ntfy_token.strip())
+        state.set_setting("public_url", payload.public_url.strip().rstrip("/"))
         reschedule()
         return _scrub(settings_provider())
 
@@ -132,6 +145,31 @@ def build_app(
         finally:
             ta.close()
         return {"ok": ok, "error": error}
+
+    @app.post("/api/videos/{video_id}/download")
+    def download_video(video_id: str, t: str = "") -> dict[str, Any]:
+        """Trigger a download from a notification's action button.
+
+        Authorised by the HMAC in `t` rather than a session, because the
+        request comes from a phone tapping an ntfy button. The signature
+        covers one video ID, so a leaked link downloads that video and
+        nothing else.
+        """
+        s = settings_provider()
+        if not signing.valid_video_id(video_id):
+            raise HTTPException(400, "invalid video id")
+        if not signing.verify(s.notify_secret, video_id, t):
+            raise HTTPException(403, "invalid signature")
+        if not s.is_ready():
+            raise HTTPException(400, "TA not configured")
+        ta = ta_provider()
+        try:
+            found = ta.download_now(video_id)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(502, f"TA request failed: {exc}")
+        if not found:
+            raise HTTPException(404, "video is not in the TA download queue")
+        return {"video_id": video_id, "downloading": True}
 
     @app.get("/api/channels")
     def list_channels() -> list[dict[str, Any]]:
