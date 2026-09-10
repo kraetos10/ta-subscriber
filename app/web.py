@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import signing
+from . import ntfy, signing, slack
 from .config import Settings, load_settings
 from .state import State
 from .subscriptions import parse_opml
@@ -170,6 +170,36 @@ def build_app(
         if not found:
             raise HTTPException(404, "video is not in the TA download queue")
         return {"video_id": video_id, "downloading": True}
+
+    @app.post("/api/notify/test")
+    def test_notifications(
+        payload: Optional[SettingsPayload] = None,
+    ) -> dict[str, Any]:
+        """Send a test message to each configured notification channel.
+
+        Uses the values posted from the settings form, falling back to what
+        is saved, so a channel can be tried before committing it.
+        """
+        s = settings_provider()
+        hook = (
+            payload.slack_webhook_url.strip()
+            if payload is not None
+            else s.slack_webhook_url
+        )
+        server = (payload.ntfy_url.strip() if payload is not None else s.ntfy_url)
+        topic = (payload.ntfy_topic.strip() if payload is not None else s.ntfy_topic)
+        token = (payload.ntfy_token.strip() if payload is not None else s.ntfy_token)
+
+        results: dict[str, Any] = {}
+        if hook:
+            ok, error = slack.post_test(hook)
+            results["slack"] = {"ok": ok, "error": error}
+        if topic:
+            ok, error = ntfy.post_test(server, topic, token=token)
+            results["ntfy"] = {"ok": ok, "error": error}
+        if not results:
+            raise HTTPException(400, "no notification channel configured")
+        return results
 
     @app.get("/api/channels")
     def list_channels() -> list[dict[str, Any]]:

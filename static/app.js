@@ -219,6 +219,28 @@ async function testConnection() {
   }
 }
 
+async function testNotifications() {
+  const f = $("#settings-form");
+  const body = {
+    ta_url: f.elements.ta_url.value.trim(),
+    slack_webhook_url: f.elements.slack_webhook_url.value.trim(),
+    ntfy_url: f.elements.ntfy_url.value.trim(),
+    ntfy_topic: f.elements.ntfy_topic.value.trim(),
+    ntfy_token: f.elements.ntfy_token.value.trim(),
+  };
+  try {
+    const r = await api("/api/notify/test", { method: "POST", body: JSON.stringify(body) });
+    // Report each channel separately: one can work while the other fails.
+    const parts = Object.entries(r).map(([name, res]) =>
+      res.ok ? `${name}: sent` : `${name}: ${res.error || "failed"}`
+    );
+    const allOk = Object.values(r).every((res) => res.ok);
+    flash($("#form-msg"), parts.join(" · "), allOk ? "ok" : "err", allOk ? 4000 : 12000);
+  } catch (e) {
+    flash($("#form-msg"), e.message, "err", 12000);
+  }
+}
+
 async function loadChannels() {
   const list = await api("/api/channels");
   const tbody = $("#channels-table tbody");
@@ -473,6 +495,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#settings-form").addEventListener("input", checkDirty);
   $("#settings-form").addEventListener("change", checkDirty);
   $("#test-conn").addEventListener("click", testConnection);
+  $("#test-notify").addEventListener("click", testNotifications);
   $("#add-channel-form").addEventListener("submit", addChannel);
   $("#opml-file").addEventListener("change", importOpml);
   $("#sync-ta").addEventListener("click", syncFromTa);

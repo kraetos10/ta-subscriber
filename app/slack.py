@@ -73,17 +73,33 @@ def post_new_video(
         ta_url=ta_url,
         published=published,
     )
+    ok, error = _post(webhook_url, payload, timeout)
+    if not ok:
+        log.warning("slack notify failed for %s: %s", video_id, error)
+    return ok
+
+
+def _post(
+    webhook_url: str,
+    payload: dict[str, object],
+    timeout: float,
+) -> tuple[bool, str | None]:
+    """POST one message. Returns (ok, error) — never raises."""
     try:
         r = httpx.post(webhook_url, json=payload, timeout=timeout)
     except httpx.HTTPError as exc:
-        log.warning("slack notify failed for %s: %s", video_id, exc)
-        return False
+        return False, str(exc)
     if r.status_code >= 400:
-        log.warning(
-            "slack notify failed for %s (%s): %s",
-            video_id,
-            r.status_code,
-            r.text[:200],
-        )
-        return False
-    return True
+        return False, f"HTTP {r.status_code}: {r.text[:200]}"
+    return True, None
+
+
+def post_test(webhook_url: str, timeout: float = 10.0) -> tuple[bool, str | None]:
+    """Send a test message. Returns (ok, error) for display in the UI."""
+    if not webhook_url:
+        return False, "no Slack webhook URL set"
+    payload = {
+        "text": ":white_check_mark: *ta-subscriber* — test notification. "
+        "Slack is configured correctly."
+    }
+    return _post(webhook_url, payload, timeout)
