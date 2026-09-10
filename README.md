@@ -57,6 +57,8 @@ The resolver fetches the YouTube page and extracts the canonical `UC…` ID. No 
 
 Both are optional, off by default, and configured in the UI (or seeded from `.env` on first run). A notification is sent once per video, only after TubeArchivist confirms it ingested it.
 
+**Send test notification** in the UI fires a test message to every channel currently filled in on the form — before saving — and reports each one separately, so a bad webhook or an unreachable ntfy server shows up immediately.
+
 - **Slack** — paste an [incoming webhook](https://api.slack.com/messaging/webhooks) URL. The message ends with a bare YouTube URL so Slack unfurls its native video preview.
 - **ntfy** — set a topic (and a server, if you self-host; default `https://ntfy.sh`). Published as [JSON](https://docs.ntfy.sh/publish/#publish-as-json) with the video title as the notification title, the channel and publish date as the body, the thumbnail attached, and **YouTube** / **TubeArchivist** action buttons. Tapping the notification opens the archived copy in TubeArchivist (or YouTube, if no TA URL is set).
 

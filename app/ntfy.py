@@ -125,18 +125,44 @@ def post_new_video(
         published=published,
         download_url=download_url,
     )
+    ok, error = _publish(endpoint, payload, token, timeout)
+    if not ok:
+        log.warning("ntfy notify failed for %s: %s", video_id, error)
+    return ok
+
+
+def _publish(
+    endpoint: str,
+    payload: dict[str, object],
+    token: str,
+    timeout: float,
+) -> tuple[bool, str | None]:
+    """POST one message. Returns (ok, error) — never raises."""
     headers = {"Authorization": f"Bearer {token.strip()}"} if token.strip() else {}
     try:
         r = httpx.post(endpoint, json=payload, headers=headers, timeout=timeout)
     except httpx.HTTPError as exc:
-        log.warning("ntfy notify failed for %s: %s", video_id, exc)
-        return False
+        return False, str(exc)
     if r.status_code >= 400:
-        log.warning(
-            "ntfy notify failed for %s (%s): %s",
-            video_id,
-            r.status_code,
-            r.text[:200],
-        )
-        return False
-    return True
+        return False, f"HTTP {r.status_code}: {r.text[:200]}"
+    return True, None
+
+
+def post_test(
+    server_url: str,
+    topic: str,
+    *,
+    token: str = "",
+    timeout: float = 10.0,
+) -> tuple[bool, str | None]:
+    """Send a test notification. Returns (ok, error) for display in the UI."""
+    endpoint, topic = normalise(server_url, topic)
+    if not topic:
+        return False, "no ntfy topic set"
+    payload = {
+        "topic": topic,
+        "title": "ta-subscriber",
+        "message": "Test notification — ntfy is configured correctly.",
+        "tags": ["white_check_mark"],
+    }
+    return _publish(endpoint, payload, token, timeout)
