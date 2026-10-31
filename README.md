@@ -130,3 +130,7 @@ export STATE_DIR=./data
 export PORT=8080
 python -m app.main
 ```
+
+## Licence
+
+MIT, see [LICENSE](LICENSE).
