@@ -1,7 +1,7 @@
 services:
   ta-subscriber:
     build: .
-    image: ta-subscriber:latest
+    image: ghcr.io/kraetos10/ta-subscriber:latest #ta-subscriber:latest
     container_name: ta-subscriber
     restart: unless-stopped
     ports:
