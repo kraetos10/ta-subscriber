@@ -23,6 +23,26 @@ docker compose up -d
 open http://localhost:8085
 ```
 
+### Using the prebuilt image
+
+No clone needed. Save this as `docker-compose.yml` and run `docker compose up -d`:
+
+```yaml
+services:
+  ta-subscriber:
+    image: ghcr.io/kraetos10/ta-subscriber:latest
+    container_name: ta-subscriber
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      TZ: UTC
+    volumes:
+      - ./data:/data
+```
+
+Configure everything else in the web UI. The optional environment variables are listed in `docker-compose.yml` in this repo.
+
 On first launch you'll see "setup required". Open the UI and:
 
 1. Paste your TubeArchivist URL (e.g. `http://tubearchivist:8000`) and API token (Settings → User → Access Token in TA). Click **Test connection**.
